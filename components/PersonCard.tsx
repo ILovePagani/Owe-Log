@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCurrency } from '@/context/CurrencyContext';
 import { useTheme } from '@/context/ThemeContext';
 import { radius, spacing, type ColorPalette } from '@/constants/theme';
 import type { PersonSummary } from '@/types/entry';
@@ -13,6 +14,7 @@ interface Props {
 
 export function PersonCard({ summary, onPress }: Props) {
   const { colors } = useTheme();
+  const { symbol } = useCurrency();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { displayName, netBalance, unsettledCount } = summary;
 
@@ -41,7 +43,7 @@ export function PersonCard({ summary, onPress }: Props) {
             netBalance === 0 && { color: colors.settled },
           ]}
         >
-          {netBalance === 0 ? 'Even' : formatMoney(netBalance)}
+          {netBalance === 0 ? 'Even' : formatMoney(netBalance, symbol)}
         </Text>
       </View>
       {netBalance !== 0 && (

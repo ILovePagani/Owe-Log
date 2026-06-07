@@ -1,6 +1,7 @@
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Pressable, Text } from 'react-native';
+import { CurrencyProvider } from '@/context/CurrencyContext';
 import { EntriesProvider } from '@/context/EntriesContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 
@@ -49,7 +50,9 @@ export default function RootLayout() {
   return (
     <EntriesProvider>
       <ThemeProvider>
-        <ThemedStack />
+        <CurrencyProvider>
+          <ThemedStack />
+        </CurrencyProvider>
       </ThemeProvider>
     </EntriesProvider>
   );

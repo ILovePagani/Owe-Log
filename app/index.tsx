@@ -1,10 +1,11 @@
 import { useRouter } from 'expo-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   Pressable,
   StyleSheet,
+  Switch,
   Text,
   View,
 } from 'react-native';
@@ -18,9 +19,12 @@ import { spacing, type ColorPalette } from '@/constants/theme';
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { summaries, loading } = useEntries();
+  const { summaries, allSummaries, loading } = useEntries();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const [showHistory, setShowHistory] = useState(false);
+
+  const displayed = showHistory ? allSummaries : summaries;
 
   if (loading) {
     return (
@@ -34,14 +38,30 @@ export default function HomeScreen() {
     <View style={[styles.container, { paddingBottom: insets.bottom + 80 }]}>
       <Text style={styles.tagline}>Who owes who — kept simple.</Text>
 
-      {summaries.length === 0 ? (
+      {allSummaries.length > 0 && (
+        <View style={styles.toggleRow}>
+          <Text style={styles.toggleLabel}>Show history</Text>
+          <Switch
+            value={showHistory}
+            onValueChange={setShowHistory}
+            trackColor={{ false: colors.border, true: colors.oweMeBg }}
+            thumbColor={showHistory ? colors.oweMe : colors.surface}
+          />
+        </View>
+      )}
+
+      {displayed.length === 0 ? (
         <EmptyState
-          title="No tabs yet"
-          subtitle="Tap + to log lunch, rides, or anything between friends."
+          title={showHistory ? 'No history yet' : 'No open tabs'}
+          subtitle={
+            showHistory
+              ? 'Your past tabs will appear here once you add some.'
+              : 'Tap + to log lunch, rides, or anything between friends.'
+          }
         />
       ) : (
         <FlatList
-          data={summaries}
+          data={displayed}
           keyExtractor={(item) => item.personKey}
           renderItem={({ item }) => (
             <PersonCard
@@ -88,8 +108,19 @@ function createStyles(colors: ColorPalette) {
     tagline: {
       fontSize: 14,
       color: colors.textMuted,
-      marginBottom: spacing.md,
+      marginBottom: spacing.sm,
       marginTop: spacing.xs,
+    },
+    toggleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: spacing.md,
+      paddingVertical: spacing.xs,
+    },
+    toggleLabel: {
+      fontSize: 14,
+      color: colors.textMuted,
     },
     list: {
       paddingBottom: spacing.md,

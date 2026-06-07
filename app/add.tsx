@@ -19,22 +19,36 @@ import type { Direction } from '@/types/entry';
 
 export default function AddEntryScreen() {
   const router = useRouter();
-  const { name: prefillName } = useLocalSearchParams<{ name?: string }>();
-  const { addEntry } = useEntries();
+  const { name: prefillName, entryId } = useLocalSearchParams<{
+    name?: string;
+    entryId?: string;
+  }>();
+
+  const { addEntry, updateEntry, entries } = useEntries();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const [displayName, setDisplayName] = useState(prefillName ?? '');
-  const [amountText, setAmountText] = useState('');
-  const [note, setNote] = useState('');
-  const [direction, setDirection] = useState<Direction>('they_owe_me');
+  // If editing, find the existing entry
+  const existingEntry = entryId ? entries.find((e) => e.id === entryId) : undefined;
+  const isEditing = !!existingEntry;
+
+  const [displayName, setDisplayName] = useState(
+    existingEntry?.displayName ?? prefillName ?? ''
+  );
+  const [amountText, setAmountText] = useState(
+    existingEntry ? String(existingEntry.amount) : ''
+  );
+  const [note, setNote] = useState(existingEntry?.note ?? '');
+  const [direction, setDirection] = useState<Direction>(
+    existingEntry?.direction ?? 'they_owe_me'
+  );
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     const name = displayName.trim();
     const amount = parseFloat(amountText.replace(/,/g, ''));
 
-    if (!name) {
+    if (!isEditing && !name) {
       Alert.alert('Name needed', 'Who is this tab with?');
       return;
     }
@@ -45,7 +59,11 @@ export default function AddEntryScreen() {
 
     setSaving(true);
     try {
-      await addEntry({ displayName: name, amount, note, direction });
+      if (isEditing && existingEntry) {
+        await updateEntry(existingEntry.id, { amount, note, direction });
+      } else {
+        await addEntry({ displayName: name, amount, note, direction });
+      }
       router.back();
     } finally {
       setSaving(false);
@@ -61,16 +79,28 @@ export default function AddEntryScreen() {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.label}>Person</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. Jake"
-          placeholderTextColor={colors.textMuted}
-          value={displayName}
-          onChangeText={setDisplayName}
-          autoCapitalize="words"
-          autoCorrect={false}
-        />
+        {!isEditing && (
+          <>
+            <Text style={styles.label}>Person</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. Jake"
+              placeholderTextColor={colors.textMuted}
+              value={displayName}
+              onChangeText={setDisplayName}
+              autoCapitalize="words"
+              autoCorrect={false}
+            />
+          </>
+        )}
+
+        {isEditing && (
+          <View style={styles.editingBanner}>
+            <Text style={styles.editingText}>
+              Editing tab with {existingEntry?.displayName}
+            </Text>
+          </View>
+        )}
 
         <Text style={styles.label}>Amount</Text>
         <TextInput
@@ -104,7 +134,9 @@ export default function AddEntryScreen() {
             saving && styles.saveDisabled,
           ]}
         >
-          <Text style={styles.saveText}>{saving ? 'Saving…' : 'Save tab'}</Text>
+          <Text style={styles.saveText}>
+            {saving ? 'Saving…' : isEditing ? 'Save changes' : 'Save tab'}
+          </Text>
         </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -117,6 +149,19 @@ function createStyles(colors: ColorPalette) {
     scroll: {
       padding: spacing.md,
       paddingBottom: spacing.xl * 2,
+    },
+    editingBanner: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      padding: spacing.md,
+      marginBottom: spacing.sm,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    editingText: {
+      fontSize: 15,
+      color: colors.textMuted,
+      fontStyle: 'italic',
     },
     label: {
       fontSize: 13,

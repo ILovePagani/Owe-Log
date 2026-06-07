@@ -18,12 +18,22 @@ interface AddEntryInput {
   direction: Direction;
 }
 
+interface UpdateEntryInput {
+  amount: number;
+  note: string;
+  direction: Direction;
+}
+
 interface EntriesContextValue {
   entries: Entry[];
   summaries: ReturnType<typeof computeSummaries>;
+  allSummaries: ReturnType<typeof computeSummaries>;
   loading: boolean;
   personNames: string[];
   addEntry: (input: AddEntryInput) => Promise<void>;
+  updateEntry: (id: string, input: UpdateEntryInput) => Promise<void>;
+  deleteEntry: (id: string) => Promise<void>;
+  deleteAllEntriesForPerson: (personKey: string) => Promise<void>;
   settleEntry: (id: string) => Promise<void>;
   archiveEntry: (id: string) => Promise<void>;
   unarchiveEntry: (id: string) => Promise<void>;
@@ -68,6 +78,39 @@ export function EntriesProvider({ children }: { children: React.ReactNode }) {
     [entries, persist]
   );
 
+  const updateEntry = useCallback(
+    async (id: string, input: UpdateEntryInput) => {
+      const next = entries.map((e) =>
+        e.id === id
+          ? {
+              ...e,
+              amount: Math.abs(input.amount),
+              note: input.note.trim(),
+              direction: input.direction,
+            }
+          : e
+      );
+      await persist(next);
+    },
+    [entries, persist]
+  );
+
+  const deleteEntry = useCallback(
+    async (id: string) => {
+      const next = entries.filter((e) => e.id !== id);
+      await persist(next);
+    },
+    [entries, persist]
+  );
+
+  const deleteAllEntriesForPerson = useCallback(
+    async (personKey: string) => {
+      const next = entries.filter((e) => e.personName !== personKey);
+      await persist(next);
+    },
+    [entries, persist]
+  );
+
   const settleEntry = useCallback(
     async (id: string) => {
       const next = entries.map((e) =>
@@ -106,7 +149,8 @@ export function EntriesProvider({ children }: { children: React.ReactNode }) {
     [entries]
   );
 
-  const summaries = useMemo(() => computeSummaries(entries), [entries]);
+  const summaries = useMemo(() => computeSummaries(entries, false), [entries]);
+  const allSummaries = useMemo(() => computeSummaries(entries, true), [entries]);
 
   const personNames = useMemo(() => {
     const names = new Set<string>();
@@ -120,9 +164,13 @@ export function EntriesProvider({ children }: { children: React.ReactNode }) {
     () => ({
       entries,
       summaries,
+      allSummaries,
       loading,
       personNames,
       addEntry,
+      updateEntry,
+      deleteEntry,
+      deleteAllEntriesForPerson,
       settleEntry,
       archiveEntry,
       unarchiveEntry,
@@ -131,9 +179,13 @@ export function EntriesProvider({ children }: { children: React.ReactNode }) {
     [
       entries,
       summaries,
+      allSummaries,
       loading,
       personNames,
       addEntry,
+      updateEntry,
+      deleteEntry,
+      deleteAllEntriesForPerson,
       settleEntry,
       archiveEntry,
       unarchiveEntry,

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useCurrency } from '@/context/CurrencyContext';
 import { useTheme } from '@/context/ThemeContext';
 import { radius, spacing, type ColorPalette } from '@/constants/theme';
 import { balanceLabel } from '@/utils/balance';
@@ -11,6 +12,7 @@ interface Props {
 
 export function BalanceBadge({ netBalance, compact }: Props) {
   const { colors } = useTheme();
+  const { symbol } = useCurrency();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const isPositive = netBalance > 0;
@@ -27,7 +29,7 @@ export function BalanceBadge({ netBalance, compact }: Props) {
   return (
     <View style={[styles.badge, { backgroundColor: bg }, compact && styles.compact]}>
       <Text style={[styles.text, { color: fg }, compact && styles.textCompact]}>
-        {balanceLabel(netBalance)}
+        {balanceLabel(netBalance, symbol)}
       </Text>
     </View>
   );

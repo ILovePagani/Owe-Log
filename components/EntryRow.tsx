@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCurrency } from '@/context/CurrencyContext';
 import { useTheme } from '@/context/ThemeContext';
 import { radius, spacing, type ColorPalette } from '@/constants/theme';
 import type { Entry } from '@/types/entry';
@@ -10,10 +11,13 @@ interface Props {
   entry: Entry;
   onSettle: () => void;
   onArchive?: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
-export function EntryRow({ entry, onSettle, onArchive }: Props) {
+export function EntryRow({ entry, onSettle, onArchive, onEdit, onDelete }: Props) {
   const { colors } = useTheme();
+  const { symbol } = useCurrency();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const settled = !!entry.settledAt;
@@ -23,6 +27,34 @@ export function EntryRow({ entry, onSettle, onArchive }: Props) {
     if (settled) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onSettle();
+  };
+
+  const handleMenu = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const options: { text: string; onPress?: () => void; style?: 'destructive' | 'cancel' }[] = [];
+
+    if (onEdit) {
+      options.push({ text: 'Edit', onPress: onEdit });
+    }
+    if (onDelete) {
+      options.push({
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          Alert.alert(
+            'Delete entry?',
+            'This cannot be undone.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Delete', style: 'destructive', onPress: onDelete },
+            ]
+          );
+        },
+      });
+    }
+    options.push({ text: 'Cancel', style: 'cancel' });
+
+    Alert.alert('Options', undefined, options);
   };
 
   const date = new Date(entry.createdAt).toLocaleDateString(undefined, {
@@ -36,7 +68,7 @@ export function EntryRow({ entry, onSettle, onArchive }: Props) {
         <View style={styles.top}>
           <Text style={[styles.amount, settled && styles.muted]}>
             {isTheyOwe ? '+' : '−'}
-            {formatMoney(entry.amount)}
+            {formatMoney(entry.amount, symbol)}
           </Text>
           <Text style={[styles.direction, { color: isTheyOwe ? colors.oweMe : colors.iOwe }]}>
             {isTheyOwe ? 'They owe you' : 'You owe them'}
@@ -50,25 +82,37 @@ export function EntryRow({ entry, onSettle, onArchive }: Props) {
         <Text style={styles.date}>{date}</Text>
       </View>
 
-      {settled ? (
-        <View style={styles.settledChip}>
-          <Text style={styles.settledText}>Settled</Text>
-          {onArchive && !entry.archived ? (
-            <Pressable onPress={onArchive} hitSlop={8}>
-              <Text style={styles.archiveLink}>Archive</Text>
-            </Pressable>
-          ) : entry.archived ? (
-            <Text style={styles.archivedLabel}>Archived</Text>
-          ) : null}
-        </View>
-      ) : (
-        <Pressable
-          onPress={handleSettle}
-          style={({ pressed }) => [styles.settleBtn, pressed && styles.settlePressed]}
-        >
-          <Text style={styles.settleText}>Settle</Text>
-        </Pressable>
-      )}
+      <View style={styles.actions}>
+        {settled ? (
+          <View style={styles.settledChip}>
+            <Text style={styles.settledText}>Settled</Text>
+            {onArchive && !entry.archived ? (
+              <Pressable onPress={onArchive} hitSlop={8}>
+                <Text style={styles.archiveLink}>Archive</Text>
+              </Pressable>
+            ) : entry.archived ? (
+              <Text style={styles.archivedLabel}>Archived</Text>
+            ) : null}
+          </View>
+        ) : (
+          <Pressable
+            onPress={handleSettle}
+            style={({ pressed }) => [styles.settleBtn, pressed && styles.settlePressed]}
+          >
+            <Text style={styles.settleText}>Settle</Text>
+          </Pressable>
+        )}
+
+        {(onEdit || onDelete) && (
+          <Pressable
+            onPress={handleMenu}
+            hitSlop={8}
+            style={({ pressed }) => [styles.menuBtn, pressed && { opacity: 0.5 }]}
+          >
+            <Text style={styles.menuDots}>⋮</Text>
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 }
@@ -124,12 +168,17 @@ function createStyles(colors: ColorPalette) {
       color: colors.settled,
       textDecorationLine: 'line-through',
     },
+    actions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      marginLeft: spacing.sm,
+    },
     settleBtn: {
       backgroundColor: colors.oweMeBg,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
       borderRadius: radius.pill,
-      marginLeft: spacing.sm,
     },
     settlePressed: {
       opacity: 0.7,
@@ -141,7 +190,6 @@ function createStyles(colors: ColorPalette) {
     },
     settledChip: {
       alignItems: 'flex-end',
-      marginLeft: spacing.sm,
     },
     settledText: {
       fontSize: 13,
@@ -157,6 +205,15 @@ function createStyles(colors: ColorPalette) {
       fontSize: 11,
       color: colors.textMuted,
       marginTop: spacing.xs,
+    },
+    menuBtn: {
+      paddingHorizontal: spacing.xs,
+      paddingVertical: spacing.xs,
+    },
+    menuDots: {
+      fontSize: 20,
+      color: colors.textMuted,
+      lineHeight: 22,
     },
   });
 }
