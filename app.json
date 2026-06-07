@@ -39,7 +39,7 @@
     },
     "plugins": ["expo-router"],
     "extra": {
-      "privacyPolicyUrl": "https://owelog.app/privacy"
+      "privacyPolicyUrl": "https://owelog.netlify.app"
     }
   }
 }
